@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Superhero Hunter App</title>
+  <link rel="stylesheet" type="text/css" href="styles.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #3d1075;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1 {
+      color: #333;
+      margin-top: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    input[type="text"] {
+      width: 70%;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    ul {
+      list-style-type: none;
+      padding: 0;
+    }
+
+    li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid #ccc;
+    }
+
+    li:last-child {
+      border-bottom: none;
+    }
+
+    img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 5px;
+    }
+
+    .favorite {
+      color: red;
+      cursor: pointer;
+    }
+
+    /* Favorite List styles */
+    #favoritesList {
+      display: none;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .favorites-container {
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Superhero Hunter App</h1>
+  <input type="text" id="searchInput" placeholder="Search for superheroes...">
+  <ul id="superheroesList"></ul>
+  <button id="favoritesButton">Favorite List</button>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
+  <script src="script.js">
+    const publicKey = '7099391f3b2a229b2361d932e2cc1331';
+    const privateKey = '826ab870a9d658e09f5e8f627f89ad360e6adfdb';
+    const baseURL = 'https://gateway.marvel.com/v1/public/characters';
+    const favoritesKey = 'favoriteSuperheroes';
+    let favorites = JSON.parse(localStorage.getItem(favoritesKey)) || [];
+
+    // Function to generate the hash value
+    function generateHash() {
+      const ts = Date.now();
+      const hash = CryptoJS.MD5(ts + privateKey + publicKey).toString();
+      return `ts=${ts}&apikey=${publicKey}&hash=${hash}`;
+    }
+
+    // Function to fetch and display superheroes on the home page
+    function fetchSuperheroes() {
+      const searchInput = document.getElementById('searchInput');
+      const superheroesList = document.getElementById('superheroesList');
+
+      fetch(`${baseURL}?nameStartsWith=${searchInput.value}&${generateHash()}`)
+        .then((response) => response.json())
+        .then((data) => {
+          superheroesList.innerHTML = '';
+
+          data.data.results.forEach((superhero) => {
+            const li = document.createElement('li');
+            const img = document.createElement('img');
+            const name = document.createElement('span');
+            const favoriteButton = document.createElement('span');
+            img.src = `${superhero.thumbnail.path}.${superhero.thumbnail.extension}`;
+            name.textContent = superhero.name;
+            favoriteButton.textContent = 'Add to Favorites';
+            favoriteButton.classList.add('favorite');
+
+            favoriteButton.addEventListener('click', () => {
+              addFavorite(superhero);
+            });
+
+            li.appendChild(img);
+            li.appendChild(name);
+            li.appendChild(favoriteButton);
+            superheroesList.appendChild(li);
+          });
+        })
+        .catch((error) => {
+          console.error('Error fetching superheroes:', error);
+        });
+    }
+
+    // Function to add superhero to favorites
+    function addFavorite(superhero) {
+      // Check if the superhero is already in favorites by comparing the 'id'
+      const isAlreadyFavorite = favorites.some((fav) => fav.id === superhero.id);
+      if (!isAlreadyFavorite) {
+        favorites.push(superhero);
+        saveFavoritesToStorage();
+        alert(`${superhero.name} added to favorites!`);
+      } else {
+        alert(`${superhero.name} is already in favorites!`);
+      }
+    }
+
+    // Function to remove superhero from favorites
+    function removeFavorite(superhero) {
+      favorites = favorites.filter((fav) => fav.id !== superhero.id);
+      saveFavoritesToStorage();
+      alert(`${superhero.name} removed from favorites!`);
+    }
+
+    // Function to save favorites to local storage
+    function saveFavoritesToStorage() {
+      localStorage.setItem(favoritesKey, JSON.stringify(favorites));
+    }
+
+    // Function to display favorite superheroes
+    function displayFavoriteSuperheroes() {
+      const favoritesList = document.getElementById('favoritesList');
+
+      favoritesList.innerHTML = '';
+
+      favorites.forEach((superhero) => {
+        const li = document.createElement('li');
+        const img = document.createElement('img');
+        const name = document.createElement('span');
+        const removeButton = document.createElement('span');
+        img.src = `${superhero.thumbnail.path}.${superhero.thumbnail.extension}`;
+        name.textContent = superhero.name;
+        removeButton.textContent = 'Remove from Favorites';
+        removeButton.classList.add('favorite');
+
+        removeButton.addEventListener('click', () => {
+          removeFavorite(superhero);
+          displayFavoriteSuperheroes();
+        });
+
+        li.appendChild(img);
+        li.appendChild(name);
+        li.appendChild(removeButton);
+        favoritesList.appendChild(li);
+      });
+    }
+
+    // Function to toggle visibility of the favorites list
+    function toggleFavoritesList() {
+      const favoritesList = document.getElementById('favoritesList');
+      const favoritesButton = document.getElementById('favoritesButton');
+      favoritesList.classList.toggle('hidden');
+      favoritesButton.textContent = favoritesList.classList.contains('hidden') ? 'Favorite List' : 'Hide Favorites';
+    }
+
+    // Attach event listeners
+    document.getElementById('searchInput').addEventListener('input', debounce(fetchSuperheroes));
+    document.getElementById('favoritesButton').addEventListener('click', toggleFavoritesList);
+
+    // Debounce function to delay calling fetchSuperheroes to avoid rapid API requests
+    function debounce(func, delay = 300) {
+      let timeout;
+      return function () {
+        const context = this;
+        const args = arguments;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), delay);
+      };
+    }
+
+    // Call fetchSuperheroes initially to load some superheroes on the home page
+    fetchSuperheroes();
+
+    // Call displayFavoriteSuperheroes to display favorites on the favorites page
+    displayFavoriteSuperheroes();
+
+  </script>
+</body>
+
+</html>
+
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>My Favorite Superheroes</title>
+  <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+
+<body>
+  <h1>My Favorite Superheroes</h1>
+  <ul id="favoritesList"></ul>
+  <script src="script.js"></script>
+</body>
+
+</html>
